@@ -5,6 +5,7 @@ local hfb = Isaac.GetItemIdByName("Happy Fish Boy")
 local fishieVariant = Isaac.GetEntityVariantByName("fishie tear")
 
 local floppingFishie = Isaac.GetEntityVariantByName("flopping fishie")
+local floppingFishieId = Isaac.GetEntityTypeByName("flopping fishie")
 
 
 TearVariant.FISHIE = fishieVariant
@@ -240,17 +241,28 @@ function mod:updateTearVariant()
 		
 end
 
+
 local function calculateDistance(vector1, vector2)
-	if(vector1 and vector2) then
-		local dx = vector2.x - vector1.x
-		local dy = vector2.y - vector1.y
-		return math.sqrt(dx * dx + dy * dy)
-	else
-		return 1000
-	end
+    if vector1 and vector2 and vector1.X and vector2.X and vector1.Y and vector2.Y then
+        local dx = vector2.X - vector1.X
+        local dy = vector2.Y - vector1.Y
+        return math.sqrt(dx * dx + dy * dy)
+    else
+        return 1000  -- Return a large value if either vector is nil or missing components
+    end
+end
+
+
+local function createColor(red, green, blue, alpha, intensity)
+    return Color(red / 255, green / 255, blue / 255, alpha / 255, intensity, intensity, intensity)
+end
+
+local function setEntityColor(entity, color)
+    entity:SetColor(color, -1, 1, false, false)  -- -1 duration means it will last indefinitely
 end
 
 function mod:updateFloppers()
+
 
 	local roomEntities = Isaac.GetRoomEntities()
 	local player = Isaac.GetPlayer(0)
@@ -271,6 +283,7 @@ function mod:updateFloppers()
 			sprite:Play("flop",false)
 
 			entity.GridCollisionClass = EntityGridCollisionClass.GRIDCOLL_GROUND
+			entity.EntityCollisionClass = EntityCollisionClass.ENTCOLL_ENEMIES
 
 			if(entity.Velocity.X>0) then
 				sprite.FlipX = true
@@ -282,11 +295,30 @@ function mod:updateFloppers()
 				entity.Velocity=Vector(math.random()*2-1, math.random()*2-1)
 			end
 
+			--graphic changes
+
+			if(entity ~=nil and player:HasCollectible(CollectibleType.COLLECTIBLE_IPECAC)) then
+				entity:SetColor(createColor(20,200,20,255,0),-1,1,false,false)
+			end
+
 			for k = 1, #roomEntities do
 
-				if roomEntities[k].Variant ~= floppingFishie then
-					if(calculateDistance(entity.Position, roomEntities[k].Position)<5) then
-						roomEntities[k].HitPoints = roomEntities[k].HitPoints - player.Damage
+				if roomEntities[k].Variant ~= floppingFishie and roomEntities[k].Type ~=EntityType.ENTITY_PLAYER then
+					if(calculateDistance(entity.Position, roomEntities[k].Position)<entity.Size+roomEntities[k].Size) then
+						local spawnedExplo = false
+						if (Game():GetFrameCount() % player.MaxFireDelay ==0) then
+							roomEntities[k]:TakeDamage(player.Damage, 0,EntityRef(entity), 0)
+
+							if(player:HasCollectible(CollectibleType.COLLECTIBLE_IPECAC) and not spawnedExplo) then
+								local tear = Isaac.Spawn(2,TearVariant.BOBS_HEAD,0,entity.Position, Vector(0,0),nil):ToTear():Kill()
+								
+								spawnedExplo = true
+							end
+
+							if(player:HasCollectible(CollectibleType.COLLECTIBLE_DR_FETUS)) then
+								
+							end
+						end
 					end
 				end
 				
@@ -308,7 +340,7 @@ function mod:checkForDeadTears()
 			local tear = entity:ToTear()
 			if tear.Variant == TearVariant.FISHIE then
 				if tear:IsDead() then
-					Isaac.Spawn(1000,floppingFishie,0,tear.Position,Vector(0,0), nil):ToNPC()
+					Isaac.Spawn(floppingFishieId,floppingFishie,0,tear.Position,Vector(0,0), nil)
 				end
 			end
 		end
@@ -321,5 +353,5 @@ end
 -- Add the callback to the mod
 mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, mod.OnNewRoom)
 mod:AddCallback(ModCallbacks.MC_POST_FIRE_TEAR, mod.updateTearVariant)
-mod:AddCallback(ModCallbacks.MC_POST_NPC_RENDER, mod.updateFloppers)
+mod:AddCallback(ModCallbacks.MC_POST_UPDATE, mod.updateFloppers)
 mod:AddCallback(ModCallbacks.MC_POST_UPDATE, mod.checkForDeadTears)

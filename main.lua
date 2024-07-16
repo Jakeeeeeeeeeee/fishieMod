@@ -41,14 +41,14 @@ local ranPool = -1
 
 function mod:useCrazyRoulette()
     ranPool = math.random(0, ItemPoolType.NUM_ITEMPOOLS - 1)
-    Isaac.ConsoleOutput(tostring(ranPool))
+   
 end
 
 mod:AddCallback(ModCallbacks.MC_USE_ITEM, mod.useCrazyRoulette, crazyRoulette)
 
 function mod:OnNewRoom()
 
-    Isaac.ConsoleOutput(tostring(ranPool))
+   
 
     if ranPool ~= -1 then
        
@@ -166,6 +166,8 @@ function mod:setupFishieTear(player, tear, data, variant, flags, sprite)
 	end
 end
 
+local fishTears ={}
+
 function mod:updateTearVariant()
 	-- Changes tears to Arrow tears and handles updates of the tears
 	
@@ -204,7 +206,10 @@ function mod:updateTearVariant()
 			    end
 				
 				
+
 				if tear.Variant == TearVariant.FISHIE then
+
+					table.insert(fishTears, tear)
 					
 					--Isaac.ConsoleOutput("X: ".. tostring(tear.Velocity.X).."Y: ".. tostring(tear.Velocity.Y))
 
@@ -222,39 +227,66 @@ function mod:updateTearVariant()
 						end
 					end
 
-					if tear:IsDead() then
-						Isaac.Spawn(2,floppingFishie,0,tear.Position,Vector(0,0), nil):ToNPC()
-					end
-					
-					
+		
 				end
 
-			end
-
-			if entity.Variant == floppingFishie then
-
-				
-				fishieCount=fishieCount+1
-
-				local sprite = entity:GetSprite()
-
-				  
-				sprite:Play("flop",false)
-
-				entity.GridCollisionClass = EntityGridCollisionClass.GRIDCOLL_NONE
-
-				if (Game():GetFrameCount()%20 ==0) then 
-					entity:AddVelocity(Vector(math.random()*2-1, math.random()*2-1))
-				end
-
-				
 			end
 		end
-		Isaac.ConsoleOutput(tostring(fishieCount))
+
+		fishTears = {}
+	
+	end
+
+		
+end
+
+function mod:updateFloppers()
+
+	local roomEntities = Isaac.GetRoomEntities()
+
+	for i = 1, #roomEntities do
+		local entity = roomEntities[i]	
+		if entity.Variant == floppingFishie then
+
+					
+			fishieCount=fishieCount+1
+
+			local sprite = entity:GetSprite()
+
+			Isaac.ConsoleOutput(tostring(entity.Type))
+			sprite:Play("flop",false)
+
+			entity.GridCollisionClass = EntityGridCollisionClass.GRIDCOLL_NONE
+
+			if (Game():GetFrameCount()%20 ==0) then 
+				entity:AddVelocity(Vector(math.random()*2-1, math.random()*2-1))
+			end
+
+			
+		end
+	end
+end
+
+function mod:checkForDeadTears()
+	
+	local roomEntities = Isaac.GetRoomEntities()
+	for i = 1, #roomEntities do
+		local entity = roomEntities[i]	
+				
+		if entity.Type == EntityType.ENTITY_TEAR then
+			local tear = entity:ToTear()
+			if tear:IsDead() then
+				Isaac.Spawn(1000,floppingFishie,0,tear.Position,Vector(0,0), nil):ToNPC()
+			end
+		end
 	end
 end
 
 
+
+
 -- Add the callback to the mod
 mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, mod.OnNewRoom)
-mod:AddCallback(ModCallbacks.MC_POST_UPDATE, mod.updateTearVariant)
+mod:AddCallback(ModCallbacks.MC_POST_FIRE_TEAR, mod.updateTearVariant)
+mod:AddCallback(ModCallbacks.MC_POST_NPC_RENDER, mod.updateFloppers)
+mod:AddCallback(ModCallbacks.MC_POST_UPDATE, mod.checkForDeadTears)

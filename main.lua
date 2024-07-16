@@ -240,26 +240,57 @@ function mod:updateTearVariant()
 		
 end
 
+local function calculateDistance(vector1, vector2)
+	if(vector1 and vector2) then
+		local dx = vector2.x - vector1.x
+		local dy = vector2.y - vector1.y
+		return math.sqrt(dx * dx + dy * dy)
+	else
+		return 1000
+	end
+end
+
 function mod:updateFloppers()
 
 	local roomEntities = Isaac.GetRoomEntities()
+	local player = Isaac.GetPlayer(0)
 
 	for i = 1, #roomEntities do
 		local entity = roomEntities[i]	
 		if entity.Variant == floppingFishie then
 
 					
-			fishieCount=fishieCount+1
+			
+			
 
 			local sprite = entity:GetSprite()
 
-			Isaac.ConsoleOutput(tostring(entity.Type))
+			sprite.Offset = Vector(0, -8)
+
+			
 			sprite:Play("flop",false)
 
-			entity.GridCollisionClass = EntityGridCollisionClass.GRIDCOLL_NONE
+			entity.GridCollisionClass = EntityGridCollisionClass.GRIDCOLL_GROUND
+
+			if(entity.Velocity.X>0) then
+				sprite.FlipX = true
+			else
+				sprite.FlipX = false
+			end
 
 			if (Game():GetFrameCount()%20 ==0) then 
-				entity:AddVelocity(Vector(math.random()*2-1, math.random()*2-1))
+				entity.Velocity=Vector(math.random()*2-1, math.random()*2-1)
+			end
+
+			for k = 1, #roomEntities do
+
+				if roomEntities[k].Variant ~= floppingFishie then
+					if(calculateDistance(entity.Position, roomEntities[k].Position)<5) then
+						roomEntities[k].HitPoints = roomEntities[k].HitPoints - player.Damage
+					end
+				end
+				
+
 			end
 
 			
@@ -268,15 +299,17 @@ function mod:updateFloppers()
 end
 
 function mod:checkForDeadTears()
-	
+
 	local roomEntities = Isaac.GetRoomEntities()
 	for i = 1, #roomEntities do
 		local entity = roomEntities[i]	
 				
 		if entity.Type == EntityType.ENTITY_TEAR then
 			local tear = entity:ToTear()
-			if tear:IsDead() then
-				Isaac.Spawn(1000,floppingFishie,0,tear.Position,Vector(0,0), nil):ToNPC()
+			if tear.Variant == TearVariant.FISHIE then
+				if tear:IsDead() then
+					Isaac.Spawn(1000,floppingFishie,0,tear.Position,Vector(0,0), nil):ToNPC()
+				end
 			end
 		end
 	end

@@ -1,0 +1,6 @@
+<items gfxroot ="gfx/items/" version = "1">
+
+    <passive id = "1" name = "Dad's Cowboy Hat" gfx = "dads_cowboy_hat.png" description = "You feel cool" quality = "3" cache = "damage speed luck firedelay" />
+    <active id = "2" name = "Crazy Roulette" gfx = "crazy_roulette.png" description = "Take a chance" quality = "3" maxcharges = "10" chargetype = "normal" />
+    <passive id = "3" name = "Happy Fish Boy" gfx = "happy_fish_boy.png" description = "So happy" quality = "4" cache="tearflag" />
+</items>

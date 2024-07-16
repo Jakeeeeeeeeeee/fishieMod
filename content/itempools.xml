@@ -1,0 +1,5 @@
+<ItemPools>
+    <Pool Name = "treasure">
+        <Item Name = "Crazy Roulette" Weight = " 0.5" DecreaseBy = "0.5" RemoveOn = "0.1"/>
+    </Pool>
+</ItemPools>

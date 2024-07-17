@@ -10,7 +10,7 @@ local floppingFishieId = Isaac.GetEntityTypeByName("flopping fishie")
 
 TearVariant.FISHIE = fishieVariant
 
-
+local tearMult =nil
 
 function mod:EvaluateCache(player, cacheFlags)
 
@@ -31,6 +31,8 @@ function mod:EvaluateCache(player, cacheFlags)
     if (cacheFlags & CacheFlag.CACHE_FIREDELAY) == CacheFlag.CACHE_FIREDELAY then
         player.MaxFireDelay = player.MaxFireDelay + itemCount*.5
     end
+
+
 
 end
 
@@ -176,15 +178,10 @@ function mod:updateTearVariant()
 	
 	if player:HasCollectible(hfb) then
 		local roomEntities = Isaac.GetRoomEntities()
-		local fireDirection = player:GetFireDirection()
+		
 		local playerData = player:GetData()
 
 		
-		if fireDirection ~= -1 then
-			if Isaac:GetFrameCount() % (player.MaxFireDelay) == 0 then
-				-- mod:fireFishie(player, fireDirection)
-			end
-		end
 		
 		local fishieCount = 0
 
@@ -197,6 +194,12 @@ function mod:updateTearVariant()
 				local variant = tear.Variant
 				local flags = tear.TearFlags
 				local sprite = tear:GetSprite()
+
+				
+
+				tearMult = tear.SizeMulti
+
+				
 				
 			    if tear.Variant == TearVariant.FISHIE and data.FISHIE ~= true then
 				    mod:initializeFishieTear(data)
@@ -207,6 +210,8 @@ function mod:updateTearVariant()
 			    end
 				
 				
+				
+				
 
 				if tear.Variant == TearVariant.FISHIE then
 
@@ -214,21 +219,45 @@ function mod:updateTearVariant()
 					
 					--Isaac.ConsoleOutput("X: ".. tostring(tear.Velocity.X).."Y: ".. tostring(tear.Velocity.Y))
 
-					if(math.abs(tear.Velocity.X)> math.abs(tear.Velocity.Y)) then
-						if(tear.Velocity.X>0) then
-							sprite:Play("FlyRight", false); 
+					if(player:HasCollectible(CollectibleType.COLLECTIBLE_DR_FETUS)) then
+						if(math.abs(tear.Velocity.X)> math.abs(tear.Velocity.Y)) then
+							if(tear.Velocity.X>0) then
+								sprite.FlipX =false
+								sprite:Play("FlyHorizontalDr", false); 
+							else
+								sprite.FlipX =true
+								sprite:Play("FlyHorizontalDr", false);
+							end
 						else
-							sprite:Play("FlyLeft", false);
+							if(tear.Velocity.Y>0) then
+								sprite.FlipY =true
+								sprite:Play("FlyVerticalDr", false);
+							else
+								sprite.FlipY =false
+								sprite:Play("FlyVerticalDr", false);
+							end
 						end
 					else
-						if(tear.Velocity.Y>0) then
-							sprite:Play("FlyDown", false);
+						if(math.abs(tear.Velocity.X)> math.abs(tear.Velocity.Y)) then
+							if(tear.Velocity.X>0) then
+								sprite.FlipX =false
+								sprite:Play("FlyHorizontal", false); 
+							else
+								sprite.FlipX =true
+								sprite:Play("FlyHorizontal", false);
+							end
 						else
-							sprite:Play("FlyUp", false);
+							if(tear.Velocity.Y>0) then
+								sprite.FlipY =true
+								sprite:Play("FlyVertical", false);
+							else
+								sprite.FlipY =false
+								sprite:Play("FlyVertical", false);
+							end
 						end
 					end
 
-		
+					
 				end
 
 			end
@@ -261,26 +290,50 @@ local function setEntityColor(entity, color)
     entity:SetColor(color, -1, 1, false, false)  -- -1 duration means it will last indefinitely
 end
 
+local updateTimer =0
+
 function mod:updateFloppers()
 
 
 	local roomEntities = Isaac.GetRoomEntities()
 	local player = Isaac.GetPlayer(0)
+	local fireDirection = player:GetFireDirection()
+	updateTimer=updateTimer+1
+	
+	if(player:HasCollectible(CollectibleType.COLLECTIBLE_DR_FETUS) and player:HasCollectible(hfb)) then
+								
+		if fireDirection ~= -1 then
+			if (Isaac:GetFrameCount() % ((player.MaxFireDelay/4)) == 0) then
+				mod:fireFishie(player, fireDirection)
+			end
+		end
+	end
 
 	for i = 1, #roomEntities do
 		local entity = roomEntities[i]	
+
+		if entity.Type == EntityType.ENTITY_BOMB then
+			entity:Remove()
+		end
 		if entity.Variant == floppingFishie then
 
-					
+			
+			
 			
 			
 
 			local sprite = entity:GetSprite()
 
 			sprite.Offset = Vector(0, -8)
-
+			if tearMult ~=nil then
+				sprite.Scale = tearMult
+			end
 			
-			sprite:Play("flop",false)
+			if(player:HasCollectible(CollectibleType.COLLECTIBLE_DR_FETUS)) then
+				sprite:Play("flopDr",false)
+			else
+				sprite:Play("flop",false)
+			end
 
 			entity.GridCollisionClass = EntityGridCollisionClass.GRIDCOLL_GROUND
 			entity.EntityCollisionClass = EntityCollisionClass.ENTCOLL_ENEMIES
@@ -291,7 +344,7 @@ function mod:updateFloppers()
 				sprite.FlipX = false
 			end
 
-			if (Game():GetFrameCount()%20 ==0) then 
+			if (updateTimer%20 ==0) then 
 				entity.Velocity=Vector(math.random()*2-1, math.random()*2-1)
 			end
 
@@ -299,20 +352,24 @@ function mod:updateFloppers()
 
 			if(entity ~=nil and player:HasCollectible(CollectibleType.COLLECTIBLE_IPECAC)) then
 				entity:SetColor(createColor(20,200,20,255,0),-1,1,false,false)
+
+				if(updateTimer%10 ==0)  then
+				Isaac.Spawn(EntityType.ENTITY_EFFECT,EffectVariant.PLAYER_CREEP_GREEN,0,entity.Position, Vector(0,0),nil):SetColor(createColor(20,200,20,255,0),-1,1,false,false)
+				end 
 			end
 
 			for k = 1, #roomEntities do
 
-				if roomEntities[k].Variant ~= floppingFishie and roomEntities[k].Type ~=EntityType.ENTITY_PLAYER then
+				if roomEntities[k].Variant ~= floppingFishie and roomEntities[k].Type ~=EntityType.ENTITY_PLAYER and roomEntities[k].Type ~=2 and roomEntities[k].Type ~=EntityType.ENTITY_EFFECT then
 					if(calculateDistance(entity.Position, roomEntities[k].Position)<entity.Size+roomEntities[k].Size) then
-						local spawnedExplo = false
+						
 						if (Game():GetFrameCount() % player.MaxFireDelay ==0) then
 							roomEntities[k]:TakeDamage(player.Damage, 0,EntityRef(entity), 0)
 
-							if(player:HasCollectible(CollectibleType.COLLECTIBLE_IPECAC) and not spawnedExplo) then
-								local tear = Isaac.Spawn(2,TearVariant.BOBS_HEAD,0,entity.Position, Vector(0,0),nil):ToTear():Kill()
+							if(player:HasCollectible(CollectibleType.COLLECTIBLE_IPECAC)) then
+								Isaac.Spawn(EntityType.ENTITY_EFFECT,1,0,entity.Position, Vector(0,0),nil):SetColor(createColor(20,200,20,255,0),-1,1,false,false)
 								
-								spawnedExplo = true
+								
 							end
 
 							if(player:HasCollectible(CollectibleType.COLLECTIBLE_DR_FETUS)) then
@@ -328,6 +385,10 @@ function mod:updateFloppers()
 			
 		end
 	end
+
+	if(updateTimer>100) then
+		updateTimer =0
+	end
 end
 
 function mod:checkForDeadTears()
@@ -340,7 +401,7 @@ function mod:checkForDeadTears()
 			local tear = entity:ToTear()
 			if tear.Variant == TearVariant.FISHIE then
 				if tear:IsDead() then
-					Isaac.Spawn(floppingFishieId,floppingFishie,0,tear.Position,Vector(0,0), nil)
+					Isaac.Spawn(floppingFishieId,floppingFishie,0,tear.Position,Vector(0,0), nil):GetData().SIZE = tear.SizeMulti
 				end
 			end
 		end
@@ -352,6 +413,6 @@ end
 
 -- Add the callback to the mod
 mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, mod.OnNewRoom)
-mod:AddCallback(ModCallbacks.MC_POST_FIRE_TEAR, mod.updateTearVariant)
+mod:AddCallback(ModCallbacks.MC_POST_TEAR_UPDATE, mod.updateTearVariant)
 mod:AddCallback(ModCallbacks.MC_POST_UPDATE, mod.updateFloppers)
 mod:AddCallback(ModCallbacks.MC_POST_UPDATE, mod.checkForDeadTears)

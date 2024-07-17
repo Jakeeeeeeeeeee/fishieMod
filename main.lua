@@ -286,15 +286,16 @@ local function createColor(red, green, blue, alpha, intensity)
     return Color(red / 255, green / 255, blue / 255, alpha / 255, intensity, intensity, intensity)
 end
 
-local function setEntityColor(entity, color)
-    entity:SetColor(color, -1, 1, false, false)  -- -1 duration means it will last indefinitely
-end
+
 
 local updateTimer =0
+
+
 
 function mod:updateFloppers()
 
 
+	
 	local roomEntities = Isaac.GetRoomEntities()
 	local player = Isaac.GetPlayer(0)
 	local fireDirection = player:GetFireDirection()
@@ -303,7 +304,7 @@ function mod:updateFloppers()
 	if(player:HasCollectible(CollectibleType.COLLECTIBLE_DR_FETUS) and player:HasCollectible(hfb)) then
 								
 		if fireDirection ~= -1 then
-			if (Isaac:GetFrameCount() % ((player.MaxFireDelay/4)) == 0) then
+			if (Isaac:GetFrameCount() % ((player.MaxFireDelay)/2) == 0) then
 				mod:fireFishie(player, fireDirection)
 			end
 		end
@@ -312,9 +313,7 @@ function mod:updateFloppers()
 	for i = 1, #roomEntities do
 		local entity = roomEntities[i]	
 
-		if entity.Type == EntityType.ENTITY_BOMB then
-			entity:Remove()
-		end
+		
 		if entity.Variant == floppingFishie then
 
 			
@@ -361,9 +360,10 @@ function mod:updateFloppers()
 			for k = 1, #roomEntities do
 
 				if roomEntities[k].Variant ~= floppingFishie and roomEntities[k].Type ~=EntityType.ENTITY_PLAYER and roomEntities[k].Type ~=2 and roomEntities[k].Type ~=EntityType.ENTITY_EFFECT then
-					if(calculateDistance(entity.Position, roomEntities[k].Position)<entity.Size+roomEntities[k].Size) then
+					if (updateTimer % player.MaxFireDelay ==0) then
+						if(calculateDistance(entity.Position, roomEntities[k].Position)<entity.Size+roomEntities[k].Size) then
 						
-						if (Game():GetFrameCount() % player.MaxFireDelay ==0) then
+						
 							roomEntities[k]:TakeDamage(player.Damage, 0,EntityRef(entity), 0)
 
 							if(player:HasCollectible(CollectibleType.COLLECTIBLE_IPECAC)) then
@@ -372,9 +372,11 @@ function mod:updateFloppers()
 								
 							end
 
-							if(player:HasCollectible(CollectibleType.COLLECTIBLE_DR_FETUS)) then
-								
-							end
+							
+						end
+						if(player:HasCollectible(CollectibleType.COLLECTIBLE_DR_FETUS)) then
+
+							Isaac.Spawn(EntityType.ENTITY_BOMB,0,0,entity.Position, Vector(0,0),nil):ToBomb():AddTearFlags(player:GetBombFlags())
 						end
 					end
 				end
@@ -401,9 +403,30 @@ function mod:checkForDeadTears()
 			local tear = entity:ToTear()
 			if tear.Variant == TearVariant.FISHIE then
 				if tear:IsDead() then
-					Isaac.Spawn(floppingFishieId,floppingFishie,0,tear.Position,Vector(0,0), nil):GetData().SIZE = tear.SizeMulti
+					Isaac.Spawn(floppingFishieId,floppingFishie,0,tear.Position,Vector(0,0), nil)
 				end
 			end
+		end
+	end
+end
+
+function mod:clearDrFetusBombs()
+
+	
+	local roomEntities = Isaac.GetRoomEntities()
+
+
+
+	for i = 1, #roomEntities do
+		local entity = roomEntities[i]	 
+
+		if entity.Type == EntityType.ENTITY_BOMB then
+			
+			
+			if(entity:ToBomb().IsFetus) then
+				entity:Remove()
+			end
+
 		end
 	end
 end
@@ -416,3 +439,4 @@ mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, mod.OnNewRoom)
 mod:AddCallback(ModCallbacks.MC_POST_TEAR_UPDATE, mod.updateTearVariant)
 mod:AddCallback(ModCallbacks.MC_POST_UPDATE, mod.updateFloppers)
 mod:AddCallback(ModCallbacks.MC_POST_UPDATE, mod.checkForDeadTears)
+mod:AddCallback(ModCallbacks.MC_POST_UPDATE, mod.clearDrFetusBombs)
